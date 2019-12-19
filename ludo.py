@@ -15,9 +15,9 @@ def habilitar_peones_no_libres(player):
             success = True
 
     if success:
-        return font.render('Elija su peon a liberar', True, LETRA_VERDE, FONDO_VERDE), draw_pawn()
+        return font.render('Elija su peon a liberar', True, LETRA_VERDE, FONDO_VERDE), draw_pawn_turn()
     else:
-        return font.render('No hay peones para liberar', True, LETRA_ROJO, FONDO_ROJO), draw_pawn()
+        return font.render('No hay peones para liberar', True, LETRA_ROJO, FONDO_ROJO), draw_pawn_turn()
 
 
 def habilitar_peones_libres(player):
@@ -28,21 +28,21 @@ def habilitar_peones_libres(player):
             success = True
 
     if success:
-        return font.render('Elija su peon a mover', True, LETRA_VERDE, FONDO_VERDE), draw_pawn()
+        return font.render('Elija su peon a mover', True, LETRA_VERDE, FONDO_VERDE), draw_pawn_turn()
     else:
         return font.render('No hay peones para mover', True, LETRA_ROJO, FONDO_ROJO), change_turn()
 
 
 def liberar_peon(pawn, entry_cell):
     if not pawn.free:
-        verify_overlapping(entry_cell, pawn)
+        pawn = verify_overlapping(entry_cell, pawn)
 
         pawn.liberar()
         pawn.update_position(entry_cell)
         pawn.set_axis(board.cells[pawn.get_position()].axis_x, board.cells[pawn.get_position()].axis_y)
-        return font.render('Peon ' + pawn.color + ' Liberado', True, LETRA_VERDE, FONDO_VERDE), draw_pawn()
+        return font.render('Peon ' + pawn.color + ' Liberado', True, LETRA_VERDE, FONDO_VERDE), draw_pawn_turn()
 
-    return font.render('No se puede liberar peon', True, LETRA_ROJO, FONDO_ROJO), draw_pawn()
+    return font.render('No se puede liberar peon', True, LETRA_ROJO, FONDO_ROJO), draw_pawn_turn()
 
 
 def mover_peon(pawn, dice_value):
@@ -52,13 +52,13 @@ def mover_peon(pawn, dice_value):
         else:
             new_position = (pawn.get_position() + dice_value) - (board.get_last_cell() + 1)
 
-        verify_overlapping(new_position, pawn)
+        pawn = verify_overlapping(new_position, pawn)
 
         pawn.update_position(new_position)
         pawn.set_axis(board.cells[pawn.get_position()].axis_x, board.cells[pawn.get_position()].axis_y)
 
         if repeat_turn:
-            return font.render('Juega Otra Vez!', True, LETRA_VERDE, FONDO_VERDE), draw_pawn()
+            return font.render('Juega Otra Vez!', True, LETRA_VERDE, FONDO_VERDE), draw_pawn_turn()
         else:
             return font.render('Turno Terminado', True, LETRA_VERDE, FONDO_VERDE), change_turn()
 
@@ -70,23 +70,27 @@ def verify_overlapping(new_position, pawn):
         for other_pawn in player.pawns:
             if new_position == other_pawn.get_position():
                 if pawn.color != other_pawn.color:
-                    other_pawn.update_position(-1)
-                    other_pawn.encarcelar()
+                    if other_pawn.get_level() > 1:
+                        other_pawn.separate_pawn()
+
+                    other_pawn.jailing()
                 else:
-                    if pawn.id == other_pawn.id or not other_pawn.get_render():
+                    if pawn.id == other_pawn.id:
                         continue
-                    level = pawn.get_level()
-                    pawn.update_level(other_pawn.get_level())
-                    other_pawn.update_level(level)
-                    other_pawn.invisible_pawn()
+
+                    pawn.set_invisible()
+                    other_pawn.join_pawn(pawn)
+                    return other_pawn
+
+    return pawn
 
 
 def change_turn():
     board.change_turn(board.get_player_of_turn().get_turn_position())
-    return draw_pawn()
+    return draw_pawn_turn()
 
 
-def draw_pawn():
+def draw_pawn_turn():
     return Pawn(10, board.get_player_of_turn().color, 925, 50)
 
 
@@ -100,7 +104,7 @@ def main():
     # GAME
     while True:
         screen.fill((255, 255, 255))
-        dice_roll_start, text, turn_pawn = events(dice_roll_start, text, draw_pawn())
+        dice_roll_start, text, turn_pawn = events(dice_roll_start, text, draw_pawn_turn())
 
         dice_time = pygame.time.get_ticks() - dice_roll_start
         if dice_time < 500 and dice.rolling:

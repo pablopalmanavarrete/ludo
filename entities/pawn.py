@@ -12,7 +12,7 @@ class Pawn(pygame.sprite.Sprite):
         self.winner = False
         self.render = True
         self.color = color
-        self.level = 1
+        self.linked_pawns = []
         self.initial_axis_x = axis_x
         self.initial_axis_y = axis_y
         self.axis_x = axis_x
@@ -29,9 +29,10 @@ class Pawn(pygame.sprite.Sprite):
     def liberar(self):
         self.free = True
 
-    def encarcelar(self):
+    def jailing(self):
         self.free = False
         self.render = True
+        self.update_position(-1)
         self.set_axis(self.initial_axis_x, self.initial_axis_y)
 
     def update_position(self, position):
@@ -41,7 +42,7 @@ class Pawn(pygame.sprite.Sprite):
         return self.position
 
     def get_level(self):
-        return self.level
+        return len(self.linked_pawns) + 1
 
     def get_render(self):
         return self.render
@@ -50,14 +51,21 @@ class Pawn(pygame.sprite.Sprite):
         self.click = click
 
     def load_image(self, color):
-        self.image = load_image("resources/pawn/" + color + "/" + str(self.level) + ".png", True)
+        self.image = load_image("resources/pawn/" + color + "/" + str(len(self.linked_pawns) + 1) + ".png", True)
         self.rect = self.image.get_rect()
         self.rect.centerx = self.axis_x
         self.rect.centery = self.axis_y
 
-    def update_level(self, level):
-        self.level = self.level + level
+    def join_pawn(self, pawn):
+        self.linked_pawns.append(pawn)
         self.load_image(self.color)
 
-    def invisible_pawn(self):
+    def separate_pawn(self):
+        for linked_pawn in self.linked_pawns:
+            linked_pawn.jailing()
+
+        self.linked_pawns = []
+        self.load_image(self.color)
+
+    def set_invisible(self):
         self.render = False
