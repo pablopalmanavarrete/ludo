@@ -59,3 +59,21 @@ class Player:
 
     def set_turn(self, turn):
         self.turn = turn
+
+    def enable_freed_pawns(self):
+        success = False
+        for pawn in self.pawns:
+            if pawn.free and not pawn.winner:
+                pawn.set_click(True)
+                success = True
+
+        return success
+
+    def enable_pawns_in_jail(self):
+        success = False
+        for pawn in self.pawns:
+            if not pawn.free and not pawn.winner:
+                pawn.set_click(True)
+                success = True
+
+        return success

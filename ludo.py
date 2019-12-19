@@ -7,33 +7,21 @@ from entities.pawn import Pawn
 from utils import *
 
 
-def habilitar_peones_no_libres(player):
-    success = False
-    for pawn in player.pawns:
-        if not pawn.free and not pawn.winner:
-            pawn.set_click(True)
-            success = True
-
-    if success:
+def enable_pawns_in_jail(player):
+    if player.enable_pawns_in_jail():
         return font.render('Elija su peon a liberar', True, LETRA_VERDE, FONDO_VERDE), draw_pawn_turn()
     else:
         return font.render('No hay peones para liberar', True, LETRA_ROJO, FONDO_ROJO), draw_pawn_turn()
 
 
-def habilitar_peones_libres(player):
-    success = False
-    for pawn in player.pawns:
-        if pawn.free and not pawn.winner:
-            pawn.set_click(True)
-            success = True
-
-    if success:
+def enable_freed_pawns(player, repeat_turn):
+    if player.enable_freed_pawns():
         return font.render('Elija su peon a mover', True, LETRA_VERDE, FONDO_VERDE), draw_pawn_turn()
     else:
-        return font.render('No hay peones para mover', True, LETRA_ROJO, FONDO_ROJO), change_turn()
+        return font.render('No hay peones para mover', True, LETRA_ROJO, FONDO_ROJO), change_turn(repeat_turn)
 
 
-def liberar_peon(pawn, entry_cell):
+def free_pawn(pawn, entry_cell):
     if not pawn.free:
         pawn = verify_overlapping(entry_cell, pawn)
 
@@ -45,24 +33,34 @@ def liberar_peon(pawn, entry_cell):
     return font.render('No se puede liberar peon', True, LETRA_ROJO, FONDO_ROJO), draw_pawn_turn()
 
 
-def mover_peon(pawn, dice_value):
+def move_pawn_selected(pawn, dice_value):
     if pawn.free:
-        if board.get_last_cell() >= pawn.get_position() + dice_value:
-            new_position = pawn.get_position() + dice_value
-        else:
-            new_position = (pawn.get_position() + dice_value) - (board.get_last_cell() + 1)
+        pawn.start_moving()
+        board.starting_movement_action(dice_value, pawn)
 
+
+def moving_pawn(pawn):
+    if board.get_last_cell() >= pawn.get_position() + 1:
+        new_position = pawn.get_position() + 1
+    else:
+        new_position = (pawn.get_position() + 1) - (board.get_last_cell() + 1)
+
+    if board.get_value_dice_to_move() > 1:
+        board.reduce_dice_value()
+    else:
         pawn = verify_overlapping(new_position, pawn)
+        board.stoping_movement_action()
 
-        pawn.update_position(new_position)
-        pawn.set_axis(board.cells[pawn.get_position()].axis_x, board.cells[pawn.get_position()].axis_y)
+    pawn.update_position(new_position)
+    pawn.set_axis(board.cells[pawn.get_position()].axis_x, board.cells[pawn.get_position()].axis_y)
 
-        if repeat_turn:
-            return font.render('Juega Otra Vez!', True, LETRA_VERDE, FONDO_VERDE), draw_pawn_turn()
-        else:
-            return font.render('Turno Terminado', True, LETRA_VERDE, FONDO_VERDE), change_turn()
 
-    return font.render('No Hay mas peones para mover', True, LETRA_ROJO, FONDO_ROJO), change_turn()
+def end_moving_pawn(repeat_turn):
+    board.set_end_action(False)
+    if repeat_turn:
+        return font.render('Juega Otra Vez!', True, LETRA_VERDE, FONDO_VERDE), draw_pawn_turn()
+    else:
+        return font.render('Turno Terminado', True, LETRA_VERDE, FONDO_VERDE), change_turn(repeat_turn)
 
 
 def verify_overlapping(new_position, pawn):
@@ -85,8 +83,9 @@ def verify_overlapping(new_position, pawn):
     return pawn
 
 
-def change_turn():
-    board.change_turn(board.get_player_of_turn().get_turn_position())
+def change_turn(repeat_turn):
+    if not repeat_turn:
+        board.change_turn(board.get_player_of_turn().get_turn_position())
     return draw_pawn_turn()
 
 
@@ -98,13 +97,14 @@ def main():
     clock = pygame.time.Clock()
     pygame.display.set_caption("Ludo By Babas")
     dice_roll_start = pygame.time.get_ticks()
+    turn_pawn = draw_pawn_turn()
 
     text = font.render('Comienza a jugar!', True, (6, 136, 61), (82, 190, 128))
-
+    repeat_turn = False
     # GAME
     while True:
         screen.fill((255, 255, 255))
-        dice_roll_start, text, turn_pawn = events(dice_roll_start, text, draw_pawn_turn())
+        dice_roll_start, text, turn_pawn = events(dice_roll_start, text, turn_pawn)
 
         dice_time = pygame.time.get_ticks() - dice_roll_start
         if dice_time < 500 and dice.rolling:
@@ -119,6 +119,11 @@ def main():
             elif not dice.rolling and dice.value > 0:
                 repeat_turn = False
                 btn_move.enable_button()
+        elif board.is_pawn_in_movement():
+            moving_pawn(board.action_pawn)
+            pygame.time.delay(100)
+        elif board.is_end_action():
+            end_moving_pawn(repeat_turn)
 
         display_images(text, turn_pawn)
         clock.tick(30)
@@ -163,17 +168,17 @@ def events(dice_roll_start, text, turn_pawn):
                 dice_roll_start = pygame.time.get_ticks()
                 dice.start_roll()
             elif btn_free.rect.colliderect([mouse[0], mouse[1], 1, 1]) and btn_free.enable:
-                text, turn_pawn = habilitar_peones_no_libres(board.get_player_of_turn())
+                text, turn_pawn = enable_pawns_in_jail(board.get_player_of_turn())
             elif btn_move.rect.colliderect([mouse[0], mouse[1], 1, 1]) and btn_move.enable:
-                text, turn_pawn = habilitar_peones_libres(board.get_player_of_turn())
+                text, turn_pawn = enable_freed_pawns(board.get_player_of_turn(), repeat_turn)
             else:
                 for player in board.players:
                     for pawn in player.pawns:
                         if pawn.rect.colliderect([mouse[0], mouse[1], 1, 1]) and pawn.click and not pawn.winner:
                             if pawn.free:
-                                text, turn_pawn = mover_peon(pawn, dice.value)
+                                move_pawn_selected(pawn, dice.value)
                             else:
-                                text, turn_pawn = liberar_peon(pawn, player.entry_board_cell)
+                                text, turn_pawn = free_pawn(pawn, player.entry_board_cell)
 
         if eventos.type == MOUSEBUTTONUP:
             mouse = eventos.pos

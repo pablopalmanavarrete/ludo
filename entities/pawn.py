@@ -11,6 +11,7 @@ class Pawn(pygame.sprite.Sprite):
         self.free = False
         self.winner = False
         self.render = True
+        self.moving = False
         self.color = color
         self.linked_pawns = []
         self.initial_axis_x = axis_x
@@ -69,3 +70,6 @@ class Pawn(pygame.sprite.Sprite):
 
     def set_invisible(self):
         self.render = False
+
+    def start_moving(self):
+        self.moving = True

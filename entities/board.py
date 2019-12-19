@@ -6,12 +6,19 @@ class Board:
     def __init__(self):
         # Config
         self.last_cell = 51
+
+        #Action Pawn
+        self.pawn_in_movement = False
+        self.dice_value = 0
+        self.action_pawn = 0
+        self.end_action = False
+
         # Active player
         self.players = []
         self.players.append(Player("green"))
         self.players.append(Player("red"))
-        self.players.append(Player("yellow"))
-        self.players.append(Player("blue"))
+        #self.players.append(Player("yellow"))
+        #self.players.append(Player("blue"))
 
         self.get_player_of_turn()
 
@@ -130,11 +137,37 @@ class Board:
             if player.turn:
                 return player
 
+    def is_pawn_in_movement(self):
+        return self.pawn_in_movement
+
+    def get_value_dice_to_move(self):
+        return self.dice_value
+
+    def is_end_action(self):
+        return self.end_action
+
+    def set_end_action(self, end_action):
+        self.end_action = end_action
+
+    def reduce_dice_value(self):
+        self.dice_value = self.dice_value - 1
+
     def change_turn(self, last_turn):
         self.players.__getitem__(last_turn).turn = False
 
-        if last_turn + 1 > 3:
+        if last_turn + 1 >= len(self.players):
             self.players.__getitem__(0).turn = True
         else:
             new_turn = last_turn + 1
             self.players.__getitem__(new_turn).turn = True
+
+    def starting_movement_action(self, dice_value, pawn):
+        self.pawn_in_movement = True
+        self.dice_value = dice_value
+        self.action_pawn = pawn
+
+    def stoping_movement_action(self):
+        self.pawn_in_movement = False
+        self.dice_value = 0
+        self.action_pawn = 0
+        self.end_action = True
