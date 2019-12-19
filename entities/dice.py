@@ -29,4 +29,4 @@ class Dice(pygame.sprite.Sprite):
         self.image = load_image("resources/dado-" + str(self.value) + ".png", True)
         self.rect = self.image.get_rect()
         self.rect.centerx = 875
-        self.rect.centery = 100
+        self.rect.centery = 120

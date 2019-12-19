@@ -3,6 +3,7 @@ from tkinter import *
 from entities.board import Board
 from entities.button import Button
 from entities.dice import Dice
+from entities.pawn import Pawn
 from utils import *
 
 
@@ -14,9 +15,9 @@ def habilitar_peones_no_libres(player):
             success = True
 
     if success:
-        return font.render('Elija su peon a liberar', True, LETRA_VERDE, FONDO_VERDE)
+        return font.render('Elija su peon a liberar', True, LETRA_VERDE, FONDO_VERDE), draw_pawn()
     else:
-        return font.render('No hay peones para liberar', True, LETRA_ROJO, FONDO_ROJO)
+        return font.render('No hay peones para liberar', True, LETRA_ROJO, FONDO_ROJO), draw_pawn()
 
 
 def habilitar_peones_libres(player):
@@ -27,10 +28,9 @@ def habilitar_peones_libres(player):
             success = True
 
     if success:
-        return font.render('Elija su peon a mover', True, LETRA_VERDE, FONDO_VERDE)
+        return font.render('Elija su peon a mover', True, LETRA_VERDE, FONDO_VERDE), draw_pawn()
     else:
-        change_turn()
-        return font.render('No hay peones para mover', True, LETRA_ROJO, FONDO_ROJO)
+        return font.render('No hay peones para mover', True, LETRA_ROJO, FONDO_ROJO), change_turn()
 
 
 def liberar_peon(pawn, entry_cell):
@@ -40,9 +40,9 @@ def liberar_peon(pawn, entry_cell):
         pawn.liberar()
         pawn.update_position(entry_cell)
         pawn.set_axis(board.cells[pawn.get_position()].axis_x, board.cells[pawn.get_position()].axis_y)
-        return font.render('Peon ' + pawn.color + ' Liberado', True, LETRA_VERDE, FONDO_VERDE)
+        return font.render('Peon ' + pawn.color + ' Liberado', True, LETRA_VERDE, FONDO_VERDE), draw_pawn()
 
-    return font.render('No se puede liberar peon', True, LETRA_ROJO, FONDO_ROJO)
+    return font.render('No se puede liberar peon', True, LETRA_ROJO, FONDO_ROJO), draw_pawn()
 
 
 def mover_peon(pawn, dice_value):
@@ -58,13 +58,11 @@ def mover_peon(pawn, dice_value):
         pawn.set_axis(board.cells[pawn.get_position()].axis_x, board.cells[pawn.get_position()].axis_y)
 
         if repeat_turn:
-            return font.render('Juega Otra Vez!', True, LETRA_VERDE, FONDO_VERDE)
+            return font.render('Juega Otra Vez!', True, LETRA_VERDE, FONDO_VERDE), draw_pawn()
         else:
-            change_turn()
-            return font.render('Turno Terminado', True, LETRA_VERDE, FONDO_VERDE)
+            return font.render('Turno Terminado', True, LETRA_VERDE, FONDO_VERDE), change_turn()
 
-    change_turn()
-    return font.render('No Hay mas peones para mover', True, LETRA_ROJO, FONDO_ROJO)
+    return font.render('No Hay mas peones para mover', True, LETRA_ROJO, FONDO_ROJO), change_turn()
 
 
 def verify_overlapping(new_position, pawn):
@@ -85,7 +83,11 @@ def verify_overlapping(new_position, pawn):
 
 def change_turn():
     board.change_turn(board.get_player_of_turn().get_turn_position())
+    return draw_pawn()
 
+
+def draw_pawn():
+    return Pawn(10, board.get_player_of_turn().color, 925, 50)
 
 
 def main():
@@ -98,7 +100,7 @@ def main():
     # GAME
     while True:
         screen.fill((255, 255, 255))
-        dice_roll_start, text = events(dice_roll_start, text)
+        dice_roll_start, text, turn_pawn = events(dice_roll_start, text, draw_pawn())
 
         dice_time = pygame.time.get_ticks() - dice_roll_start
         if dice_time < 500 and dice.rolling:
@@ -114,14 +116,24 @@ def main():
                 repeat_turn = False
                 btn_move.enable_button()
 
-        display_images(text)
+        display_images(text, turn_pawn)
         clock.tick(30)
     return 0
 
 
-def display_images(text):
+def display_images(text, turn_pawn):
     screen.blit(background_image, (0, 0))
     screen.blit(dice.image, dice.rect)
+
+    text_turn = font.render('Turno de', True, LETRA_VERDE, FONDO_BLANCO)
+
+    turnRect = text_turn.get_rect()
+    turnRect.centerx = 855
+    turnRect.centery = 50
+
+    screen.blit(text_turn, turnRect)
+    screen.blit(turn_pawn.image, turn_pawn.rect)
+
     screen.blit(btn_free.image, btn_free.rect)
     screen.blit(btn_move.image, btn_move.rect)
 
@@ -137,7 +149,7 @@ def display_images(text):
     pygame.display.flip()
 
 
-def events(dice_roll_start, text):
+def events(dice_roll_start, text, turn_pawn):
     for eventos in pygame.event.get():
         if eventos.type == QUIT:
             sys.exit(0)
@@ -147,17 +159,17 @@ def events(dice_roll_start, text):
                 dice_roll_start = pygame.time.get_ticks()
                 dice.start_roll()
             elif btn_free.rect.colliderect([mouse[0], mouse[1], 1, 1]) and btn_free.enable:
-                text = habilitar_peones_no_libres(board.get_player_of_turn())
+                text, turn_pawn = habilitar_peones_no_libres(board.get_player_of_turn())
             elif btn_move.rect.colliderect([mouse[0], mouse[1], 1, 1]) and btn_move.enable:
-                text = habilitar_peones_libres(board.get_player_of_turn())
+                text, turn_pawn = habilitar_peones_libres(board.get_player_of_turn())
             else:
                 for player in board.players:
                     for pawn in player.pawns:
                         if pawn.rect.colliderect([mouse[0], mouse[1], 1, 1]) and pawn.click and not pawn.winner:
                             if pawn.free:
-                                mover_peon(pawn, dice.value)
+                                text, turn_pawn = mover_peon(pawn, dice.value)
                             else:
-                                liberar_peon(pawn, player.entry_board_cell)
+                                text, turn_pawn = liberar_peon(pawn, player.entry_board_cell)
 
         if eventos.type == MOUSEBUTTONUP:
             mouse = eventos.pos
@@ -175,8 +187,7 @@ def events(dice_roll_start, text):
                     for pawn in player.pawns:
                         pawn.set_click(False)
 
-
-    return dice_roll_start, text
+    return dice_roll_start, text, turn_pawn
 
 
 screen = pygame.display.set_mode((WIDTH + 200, HEIGHT))
@@ -189,12 +200,13 @@ FONDO_ROJO = (236, 112, 99)
 LETRA_ROJO = (160, 32, 19)
 LETRA_VERDE = (6, 136, 61)
 FONDO_VERDE = (82, 190, 128)
+FONDO_BLANCO = (255, 255, 255)
 
 if __name__ == '__main__':
     pygame.init()
     background_image = load_image('./resources/board.png')
     font = pygame.font.Font('resources/calibri.ttf', 26)
     dice = Dice()
-    btn_free = Button("liberar", 875, 200)
-    btn_move = Button("mover", 875, 300)
+    btn_free = Button("liberar", 875, 220)
+    btn_move = Button("mover", 875, 320)
     main()
